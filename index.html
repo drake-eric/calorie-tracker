@@ -580,6 +580,21 @@ select.form-input {
   content: ''; flex: 1; height: 1px; background: var(--border);
 }
 
+/* ---- GOAL TOGGLE ---- */
+.goal-toggle { display: flex; gap: 10px; }
+.goal-toggle-btn {
+  flex: 1; padding: 12px 10px; border-radius: 12px; cursor: pointer;
+  border: 2px solid var(--border); background: var(--surface2);
+  color: var(--muted); font-family: var(--font-body); font-size: 14px;
+  font-weight: 600; text-align: center; transition: all 0.2s;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.goal-toggle-btn .toggle-icon { font-size: 22px; }
+.goal-toggle-btn:hover { border-color: var(--accent); color: var(--text); }
+.goal-toggle-btn.active {
+  border-color: var(--accent); background: var(--setup-grad); color: var(--accent);
+}
+
 .hidden { display: none !important; }
 @media (max-width: 400px) { .cal-stats { gap: 20px; } }
 </style>
@@ -606,7 +621,7 @@ select.form-input {
   <div class="setup-icon">🎯</div>
   <div class="setup-text">
     <strong>Set your daily goal</strong>
-    <span>Enter your calorie budget to get started</span>
+    <span>Choose your goal and enter your calorie budget</span>
   </div>
   <button class="setup-btn" onclick="openSettings()">Set Up</button>
 </div>
@@ -741,6 +756,21 @@ select.form-input {
     </div>
 
     <div class="form-group">
+      <label class="form-label">My Goal</label>
+      <div class="goal-toggle">
+        <button class="goal-toggle-btn" id="btnLoss" onclick="setGoalType('loss')">
+          <span class="toggle-icon">📉</span>
+          Weight Loss
+        </button>
+        <button class="goal-toggle-btn" id="btnGain" onclick="setGoalType('gain')">
+          <span class="toggle-icon">📈</span>
+          Weight Gain
+        </button>
+      </div>
+      <div id="goalTypeHint" style="font-size:12px; color:var(--muted); margin-top:10px; min-height:16px;"></div>
+    </div>
+
+    <div class="form-group">
       <label class="form-label">Daily Calorie Goal</label>
       <input type="number" id="goalInput" class="form-input" placeholder="e.g. 2000" min="500" max="10000">
       <div style="font-size:12px; color:var(--muted); margin-top:8px;">
@@ -751,8 +781,8 @@ select.form-input {
     <div class="form-group">
       <label class="form-label">Current Weight (lbs)</label>
       <input type="number" id="weightInput" class="form-input" placeholder="e.g. 175" min="50" max="600" step="0.1">
-      <div style="font-size:12px; color:var(--muted); margin-top:8px;">
-        Log weekly — after 4 weeks or 5 lbs lost, you'll get a reminder to recalculate your calories.
+      <div id="weightHint" style="font-size:12px; color:var(--muted); margin-top:8px;">
+        Log weekly — after 4 weeks or 5 lbs gained, you'll get a reminder to recalculate your calories.
       </div>
     </div>
 
@@ -781,7 +811,7 @@ select.form-input {
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">Weekly Check-In ⚖️</div>
-    <p style="color:var(--muted); font-size:14px; margin-bottom:20px;">Time to log this week's weight. How are you doing?</p>
+    <p id="weightModalDesc" style="color:var(--muted); font-size:14px; margin-bottom:20px;">Time to log this week's weight. How are you doing?</p>
     <div class="form-group">
       <label class="form-label">Current Weight (lbs)</label>
       <input type="number" id="weeklyWeightInput" class="form-input" placeholder="e.g. 172" min="50" max="600" step="0.1">
@@ -827,7 +857,7 @@ function ss(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
 // ============================
 // STATE
 // ============================
-let settings         = gs('fuel_settings', { goal: 0, startWeight: 0, currentWeight: 0, settingsDate: null });
+let settings         = gs('fuel_settings', { goal: 0, startWeight: 0, currentWeight: 0, settingsDate: null, goalType: 'loss' });
 let allDays          = gs('fuel_days', {});
 let weightLog        = gs('fuel_weights', []);
 let lastWeightPrompt = gs('fuel_last_weight_prompt', null);
@@ -1101,11 +1131,30 @@ function useAiResult(item) {
 }
 
 // ============================
+// GOAL TYPE
+// ============================
+function setGoalType(type) {
+  settings.goalType = type;
+  document.getElementById('btnLoss').classList.toggle('active', type === 'loss');
+  document.getElementById('btnGain').classList.toggle('active', type === 'gain');
+  const hint = document.getElementById('goalTypeHint');
+  const weightHint = document.getElementById('weightHint');
+  if (type === 'loss') {
+    hint.textContent = '🔥 Eating below your TDEE helps create a calorie deficit for fat loss.';
+    weightHint.textContent = 'Log weekly — after 4 weeks or 5 lbs lost, you\'ll get a reminder to recalculate.';
+  } else {
+    hint.textContent = '💪 Eating above your TDEE fuels muscle growth and healthy weight gain.';
+    weightHint.textContent = 'Log weekly — after 4 weeks or 5 lbs gained, you\'ll get a reminder to recalculate.';
+  }
+}
+
+// ============================
 // SETTINGS MODAL
 // ============================
 function openSettings() {
   document.getElementById('goalInput').value   = settings.goal || '';
   document.getElementById('weightInput').value = settings.currentWeight || '';
+  setGoalType(settings.goalType || 'loss');
   // refresh active swatches
   document.querySelectorAll('.theme-swatch').forEach(s => {
     s.classList.toggle('active', s.dataset.themeId === currentTheme);
@@ -1144,7 +1193,11 @@ function saveSettings() {
 // WEIGHT MODAL
 // ============================
 function openWeightModal() {
+  const isGain = settings.goalType === 'gain';
   document.getElementById('weeklyWeightInput').value = '';
+  document.getElementById('weightModalDesc').textContent = isGain
+    ? 'Time to log this week\'s weight. Keep fueling those gains! 💪'
+    : 'Time to log this week\'s weight. Stay consistent — you\'ve got this! 🔥';
   document.getElementById('weightModal').classList.add('open');
 }
 function closeWeightModal() {
@@ -1201,10 +1254,17 @@ function checkWeightPrompt() {
 }
 function checkRecalcSuggestion() {
   if (!settings.startWeight || !settings.currentWeight || !settings.settingsDate) return false;
-  const lost  = settings.startWeight - settings.currentWeight;
-  const weeks = (new Date() - new Date(settings.settingsDate)) / (1000*60*60*24*7);
-  if (lost  >= 5) return `You've lost ${lost.toFixed(1)} lbs — update your calorie goal!`;
-  if (weeks >= 4) return `It's been ${Math.floor(weeks)} weeks — recalculate for best results.`;
+  const change = settings.currentWeight - settings.startWeight; // positive = gained, negative = lost
+  const weeks  = (new Date() - new Date(settings.settingsDate)) / (1000*60*60*24*7);
+  const isGain = settings.goalType === 'gain';
+
+  if (isGain) {
+    if (change >= 5)  return `You've gained ${change.toFixed(1)} lbs — great progress! Update your goal to keep growing.`;
+    if (weeks >= 4)   return `It's been ${Math.floor(weeks)} weeks — recalculate to keep making gains.`;
+  } else {
+    if (-change >= 5) return `You've lost ${(-change).toFixed(1)} lbs — amazing! Update your goal to keep the momentum.`;
+    if (weeks >= 4)   return `It's been ${Math.floor(weeks)} weeks — recalculate for best results.`;
+  }
   return false;
 }
 function dismissRecalc() {
@@ -1234,6 +1294,7 @@ function renderAll() {
 
 buildThemeSwatches();
 applyTheme(currentTheme);
+setGoalType(settings.goalType || 'loss');
 renderAll();
 </script>
 </body>
