@@ -735,7 +735,32 @@ select.form-input {
 <div class="modal-backdrop" id="settingsModal">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">Settings</div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <div class="modal-title" style="margin-bottom:0;">Settings</div>
+      <button onclick="closeSettings()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;line-height:1;transition:color 0.2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'" title="Close">✕</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Daily Calorie Goal</label>
+      <input type="number" id="goalInput" class="form-input" placeholder="e.g. 2000" min="500" max="10000">
+      <div style="font-size:12px; color:var(--muted); margin-top:8px;">
+        Your goal carries over each day automatically — only update it when your needs change.
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Current Weight (lbs)</label>
+      <input type="number" id="weightInput" class="form-input" placeholder="e.g. 175" min="50" max="600" step="0.1">
+      <div style="font-size:12px; color:var(--muted); margin-top:8px;">
+        Log weekly — after 4 weeks or 5 lbs lost, you'll get a reminder to recalculate your calories.
+      </div>
+    </div>
+
+    <div class="modal-actions" style="margin-bottom:28px;">
+      <button class="btn-save" style="flex:1;" onclick="saveSettings()">Save</button>
+    </div>
+
+    <div class="modal-divider"><span>Appearance</span></div>
 
     <!-- THEME PICKER -->
     <div class="theme-section">
@@ -747,25 +772,6 @@ select.form-input {
       <div class="theme-grid" id="themeGridMasc"></div>
     </div>
 
-    <div class="modal-divider"><span>Daily Goal</span></div>
-
-    <div class="form-group">
-      <label class="form-label">Daily Calorie Goal</label>
-      <input type="number" id="goalInput" class="form-input" placeholder="e.g. 2000" min="500" max="10000">
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Current Weight (lbs)</label>
-      <input type="number" id="weightInput" class="form-input" placeholder="e.g. 175" min="50" max="600" step="0.1">
-      <div style="font-size:12px; color:var(--muted); margin-top:8px;">
-        Log weekly — after 4 weeks or 5 lbs lost, you'll get a reminder to recalculate your calories.
-      </div>
-    </div>
-
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeSettings()">Cancel</button>
-      <button class="btn-save" onclick="saveSettings()">Save</button>
-    </div>
   </div>
 </div>
 
@@ -835,6 +841,8 @@ const MONTHS     = ['January','February','March','April','May','June','July','Au
 function todayKey() { const d = new Date(); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
 const tk = todayKey();
 if (!allDays[tk]) { allDays[tk] = { entries: [], goal: settings.goal || 0, note: '' }; ss('fuel_days', allDays); }
+// Always sync today's goal from settings (in case it was set on a previous day)
+if (settings.goal && !allDays[tk].goal) { allDays[tk].goal = settings.goal; ss('fuel_days', allDays); }
 if (!allDays[tk].note) allDays[tk].note = '';
 
 // ============================
@@ -1109,7 +1117,14 @@ function closeSettings() { document.getElementById('settingsModal').classList.re
 function saveSettings() {
   const goal   = parseInt(document.getElementById('goalInput').value);
   const weight = parseFloat(document.getElementById('weightInput').value);
-  if (goal && goal > 0) { settings.goal = goal; allDays[tk].goal = goal; }
+
+  // Only update goal if user typed something valid
+  if (goal && goal > 0) {
+    settings.goal = goal;
+  }
+  // Apply the saved goal to today's entry always
+  allDays[tk].goal = settings.goal || 0;
+
   if (weight && weight > 0) {
     if (!settings.startWeight) settings.startWeight = weight;
     settings.currentWeight = weight;
