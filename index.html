@@ -455,6 +455,76 @@ select.form-input {
   background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px;
 }
 
+/* ---- PROGRESS MODAL ---- */
+.suggestion-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 13px 14px;
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.suggestion-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+.suggestion-body { flex: 1; }
+.suggestion-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+.suggestion-text { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.suggestion-card.highlight { border-color: var(--accent); background: var(--setup-grad); }
+.suggestion-card.highlight .suggestion-text { color: var(--text); opacity: 0.8; }
+
+/* ---- FOOD SEARCH ---- */
+.search-wrap { margin-bottom: 4px; }
+.search-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--muted); margin-bottom: 8px; font-weight: 600;
+}
+.search-badge {
+  background: var(--setup-grad); border: 1px solid var(--accent);
+  color: var(--accent); font-size: 10px; font-weight: 700;
+  padding: 2px 7px; border-radius: 20px; letter-spacing: 0.08em;
+}
+.search-row { display: flex; gap: 8px; }
+.search-input {
+  flex: 1; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 12px; color: var(--text); font-family: var(--font-body);
+  font-size: 15px; padding: 12px 14px; outline: none; transition: border-color 0.2s;
+}
+.search-input:focus { border-color: var(--accent); }
+.search-input::placeholder { color: var(--muted); }
+.search-btn {
+  background: var(--accent); color: var(--bg); border: none;
+  padding: 0 16px; border-radius: 12px; font-family: var(--font-body);
+  font-weight: 700; font-size: 13px; cursor: pointer;
+  min-width: 80px; display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.2s;
+}
+.search-btn:hover:not(:disabled) { opacity: 0.85; }
+.search-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.search-spinner {
+  width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.2);
+  border-top-color: var(--bg); border-radius: 50%;
+  animation: spin 0.7s linear infinite; display: none;
+}
+.search-results {
+  margin-top: 10px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+  display: none;
+}
+.search-results.visible { display: block; }
+.search-result-item {
+  padding: 11px 14px; border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background 0.15s;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover { background: rgba(128,128,128,0.1); }
+.search-result-name { font-size: 14px; font-weight: 600; line-height: 1.3; }
+.search-result-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.search-result-right { flex-shrink: 0; text-align: right; }
+.search-result-cals { font-family: var(--font-display); font-size: 19px; color: var(--accent); }
+.search-result-use { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); opacity: 0.65; margin-top: 2px; }
+.search-msg {
+  padding: 16px 14px; text-align: center; color: var(--muted); font-size: 13px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+
 /* ---- PHOTO UPLOAD ---- */
 .photo-upload {
   border: 2px dashed var(--border); border-radius: 12px;
@@ -680,13 +750,114 @@ select.form-input {
   <textarea id="dailyNote" class="note-input" placeholder="How are you feeling? Water intake, energy levels, notes…" oninput="saveNote()"></textarea>
 </div>
 
+<!-- SEE MY PROGRESS BUTTON -->
+<div style="padding: 20px 16px 0;">
+  <button onclick="openProgress()" style="width:100%; background:var(--surface); border:1px solid var(--border); color:var(--text); padding:16px; border-radius:14px; font-family:var(--font-body); font-size:15px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; transition:background 0.2s;">
+    <span style="font-size:22px;">📊</span> See My Progress
+  </button>
+</div>
+
+
+<!-- =================== PROGRESS MODAL =================== -->
+<div class="modal-backdrop" id="progressModal">
+  <div class="modal" style="border-radius:24px 24px 0 0; max-height:92vh;">
+    <div class="modal-handle"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <div class="modal-title" style="margin-bottom:0;">My Progress</div>
+      <button onclick="closeProgress()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:color 0.2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">✕</button>
+    </div>
+
+    <!-- GOAL PROGRESS BAR -->
+    <div id="progressGoalSection" style="margin-bottom:20px; display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+        <span style="font-family:var(--font-display); font-size:16px;">Goal Progress</span>
+        <span id="progressGoalPct" style="font-size:13px; color:var(--accent); font-weight:600;"></span>
+      </div>
+      <div style="height:12px; background:var(--surface2); border-radius:20px; overflow:hidden; margin-bottom:10px;">
+        <div id="progressGoalBar" style="height:100%; border-radius:20px; background:var(--accent); transition:width 0.6s cubic-bezier(.4,0,.2,1); width:0%;"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between;">
+        <div style="text-align:left;">
+          <div style="font-size:18px; font-weight:700; font-family:var(--font-display);" id="progressStartLbl">—</div>
+          <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em;">Start</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:18px; font-weight:700; font-family:var(--font-display); color:var(--accent);" id="progressCurrentLbl">—</div>
+          <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em;">Now</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:18px; font-weight:700; font-family:var(--font-display);" id="progressGoalLbl">—</div>
+          <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em;">Goal</div>
+        </div>
+      </div>
+      <div id="progressEtaBox" style="margin-top:14px; background:var(--setup-grad); border:1px solid var(--accent); border-radius:12px; padding:12px 14px; font-size:13px; line-height:1.5;"></div>
+    </div>
+
+    <!-- WEIGHT CHART -->
+    <div style="margin-bottom:20px;">
+      <div style="font-family:var(--font-display); font-size:16px; margin-bottom:12px;">Weight History</div>
+      <div id="weightChartWrap" style="position:relative; height:160px; background:var(--surface2); border-radius:14px; overflow:hidden;">
+        <canvas id="weightChart" style="width:100%; height:100%;"></canvas>
+        <div id="weightChartEmpty" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);font-size:13px;gap:6px;">
+          <span style="font-size:28px;">⚖️</span>
+          <span>Log your weight weekly to see your trend</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS ROW -->
+    <div id="progressStatsRow" style="display:none; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px;">
+      <div style="background:var(--surface2); border-radius:12px; padding:12px; text-align:center;">
+        <div style="font-family:var(--font-display); font-size:20px; color:var(--accent);" id="statChange">—</div>
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; margin-top:3px;" id="statChangeLbl">Change</div>
+      </div>
+      <div style="background:var(--surface2); border-radius:12px; padding:12px; text-align:center;">
+        <div style="font-family:var(--font-display); font-size:20px; color:var(--accent);" id="statWeeks">—</div>
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; margin-top:3px;">Weeks</div>
+      </div>
+      <div style="background:var(--surface2); border-radius:12px; padding:12px; text-align:center;">
+        <div style="font-family:var(--font-display); font-size:20px; color:var(--accent);" id="statAvgWeekly">—</div>
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; margin-top:3px;">Avg/Week</div>
+      </div>
+    </div>
+
+    <!-- SUGGESTIONS -->
+    <div id="progressSuggestions" style="display:none;">
+      <div style="font-family:var(--font-display); font-size:16px; margin-bottom:12px;">💡 Personalized Tips</div>
+      <div id="suggestionsList" style="display:flex; flex-direction:column; gap:10px;"></div>
+    </div>
+
+    <!-- NO DATA -->
+    <div id="progressNoData" style="text-align:center; padding:20px 0; color:var(--muted); font-size:14px; display:none;">
+      <div style="font-size:36px; margin-bottom:12px;">🌱</div>
+      Set your current weight and goal weight in Settings to get started.
+    </div>
+
+  </div>
+</div>
 
 <!-- =================== ADD FOOD MODAL =================== -->
 <div class="modal-backdrop" id="addModal">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">Log Food</div>
+    <div class="modal-title">Log Fuel</div>
 
+    <!-- FOOD SEARCH -->
+    <div class="search-wrap">
+      <div class="search-label">
+        Quick Search <span class="search-badge">DATABASE</span>
+      </div>
+      <div class="search-row">
+        <input type="text" id="searchInput" class="search-input" placeholder="e.g. banana, greek yogurt…" onkeydown="if(event.key==='Enter')foodSearch()">
+        <button class="search-btn" id="searchBtn" onclick="foodSearch()">
+          <span id="searchBtnText">Search</span>
+          <div class="search-spinner" id="searchSpinner"></div>
+        </button>
+      </div>
+      <div class="search-results" id="searchResults"></div>
+    </div>
+
+    <div class="modal-divider"><span>or enter manually</span></div>
 
     <div class="form-group">
       <label class="form-label">Food / Meal Name</label>
@@ -819,6 +990,14 @@ select.form-input {
     </div>
 
     <div class="form-group">
+      <label class="form-label">Goal Weight (lbs)</label>
+      <input type="number" id="goalWeightInput" class="form-input" placeholder="e.g. 155" min="50" max="600" step="0.1">
+      <div style="font-size:12px; color:var(--muted); margin-top:8px;">
+        Used to track your progress and estimate how long it'll take to reach your goal.
+      </div>
+    </div>
+
+    <div class="form-group">
       <label class="form-label">Track Protein?</label>
       <div class="goal-toggle">
         <button class="goal-toggle-btn" id="btnProteinYes" onclick="setProteinTracking(true)">
@@ -911,7 +1090,7 @@ function ss(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
 // ============================
 // STATE
 // ============================
-let settings         = gs('fuel_settings', { goal: 0, startWeight: 0, currentWeight: 0, settingsDate: null, goalType: 'loss', trackProtein: false, proteinGoal: 0 });
+let settings         = gs('fuel_settings', { goal: 0, startWeight: 0, currentWeight: 0, settingsDate: null, goalType: 'loss', trackProtein: false, proteinGoal: 0, goalWeight: 0 });
 let allDays          = gs('fuel_days', {});
 let weightLog        = gs('fuel_weights', []);
 let lastWeightPrompt = gs('fuel_last_weight_prompt', null);
@@ -1202,12 +1381,131 @@ function renderNote() { document.getElementById('dailyNote').value = allDays[tk]
 function saveNote() { allDays[tk].note = document.getElementById('dailyNote').value; ss('fuel_days', allDays); }
 
 // ============================
+// FOOD SEARCH (Open Food Facts)
+// ============================
+async function foodSearch() {
+  const query = document.getElementById('searchInput').value.trim();
+  if (!query) return;
+
+  const btn     = document.getElementById('searchBtn');
+  const btnText = document.getElementById('searchBtnText');
+  const spinner = document.getElementById('searchSpinner');
+  const results = document.getElementById('searchResults');
+
+  btn.disabled = true;
+  btnText.style.display = 'none';
+  spinner.style.display = 'block';
+  results.classList.add('visible');
+  results.innerHTML = `<div class="search-msg">Searching…</div>`;
+
+  try {
+    // Search Open Food Facts — broad fields, larger page to get more candidates
+    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&fields=product_name,brands,nutriments,serving_size,serving_quantity,categories_tags`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('Network error');
+    const data = await resp.json();
+
+    const products = (data.products || []);
+
+    // Pull calories from every possible field name OFF uses
+    const getCals = (n, type) => {
+      if (type === 'serving') {
+        return n['energy-kcal_serving'] || n['energy-kcal_serve'] ||
+               (n['energy-kcal'] && n['serving_quantity'] ? n['energy-kcal'] * n['serving_quantity'] / 100 : 0) || 0;
+      }
+      return n['energy-kcal_100g'] || n['energy-kcal'] ||
+             (n['energy_100g'] ? n['energy_100g'] / 4.184 : 0) || 0;
+    };
+    const getMacro = (n, macro, type) => {
+      const sfx = type === 'serving' ? '_serving' : '_100g';
+      return n[macro + sfx] || n[macro] || 0;
+    };
+
+    // Filter: must have a name AND any calorie data
+    const valid = products.filter(p => {
+      if (!p.product_name || !p.product_name.trim()) return false;
+      const n = p.nutriments || {};
+      return getCals(n, 'serving') > 0 || getCals(n, '100g') > 0;
+    });
+
+    if (!valid.length) {
+      results.innerHTML = `<div class="search-msg">No results for "<strong>${esc(query)}</strong>" — try simpler terms like "chicken" or "oats".</div>`;
+      return;
+    }
+
+    // Map to clean items — dedupe by name+cals
+    const seen = new Set();
+    const items = [];
+    for (const p of valid) {
+      const n = p.nutriments || {};
+      const hasServing = getCals(n, 'serving') >= 1;
+      const cals    = Math.round(hasServing ? getCals(n, 'serving')             : getCals(n, '100g'));
+      const protein = Math.round(hasServing ? getMacro(n,'proteins','serving')  : getMacro(n,'proteins','100g'));
+      const carbs   = Math.round(hasServing ? getMacro(n,'carbohydrates','serving') : getMacro(n,'carbohydrates','100g'));
+      const fat     = Math.round(hasServing ? getMacro(n,'fat','serving')       : getMacro(n,'fat','100g'));
+      if (cals <= 0) continue;
+
+      const brand   = p.brands ? p.brands.split(',')[0].trim() : '';
+      const note    = hasServing ? (p.serving_size || 'per serving') : 'per 100g';
+      const name    = p.product_name.trim();
+      const key     = `${name.toLowerCase()}|${cals}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      items.push({ name, brand, cals, protein, carbs, fat, note });
+      if (items.length >= 6) break;
+    }
+
+    if (!items.length) {
+      results.innerHTML = `<div class="search-msg">No usable nutrition data found — try a different search.</div>`;
+      return;
+    }
+
+    results.innerHTML = '';
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'search-result-item';
+      div.onclick = () => useSearchResult(item);
+      div.innerHTML = `
+        <div style="flex:1;min-width:0;">
+          <div class="search-result-name">${esc(item.name)}</div>
+          <div class="search-result-sub">${item.brand ? esc(item.brand) + ' · ' : ''}P ${item.protein}g · C ${item.carbs}g · F ${item.fat}g · ${esc(item.note)}</div>
+        </div>
+        <div class="search-result-right">
+          <div class="search-result-cals">${item.cals}</div>
+          <div class="search-result-use">Use ↑</div>
+        </div>`;
+      results.appendChild(div);
+    });
+
+  } catch (err) {
+    results.innerHTML = `<div class="search-msg" style="color:var(--danger);">Search failed — check your connection and try again.</div>`;
+  } finally {
+    btn.disabled = false;
+    btnText.style.display = 'inline';
+    spinner.style.display = 'none';
+  }
+}
+
+function useSearchResult(item) {
+  document.getElementById('foodName').value    = item.name + (item.brand ? ` (${item.brand})` : '');
+  document.getElementById('foodCals').value    = item.cals;
+  if (settings.trackProtein) document.getElementById('foodProtein').value = item.protein || '';
+  document.getElementById('searchResults').classList.remove('visible');
+  document.getElementById('searchInput').value = '';
+  document.getElementById('foodName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ============================
 // ADD FOOD MODAL
 // ============================
 function openAddModal() {
-  document.getElementById('foodName').value = '';
-  document.getElementById('foodCals').value = '';
+  document.getElementById('foodName').value    = '';
+  document.getElementById('foodCals').value    = '';
   document.getElementById('foodProtein').value = '';
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').classList.remove('visible');
+  document.getElementById('searchResults').innerHTML = '';
   document.getElementById('photoPreview').classList.add('hidden');
   document.getElementById('photoPlaceholder').classList.remove('hidden');
   photoDataUrl = null;
@@ -1277,8 +1575,9 @@ function setProteinTracking(val) {
 // SETTINGS MODAL
 // ============================
 function openSettings() {
-  document.getElementById('goalInput').value   = settings.goal || '';
-  document.getElementById('weightInput').value = settings.currentWeight || '';
+  document.getElementById('goalInput').value        = settings.goal || '';
+  document.getElementById('weightInput').value      = settings.currentWeight || '';
+  document.getElementById('goalWeightInput').value  = settings.goalWeight || '';
   document.getElementById('proteinGoalInput').value = settings.proteinGoal || '';
   setGoalType(settings.goalType || 'loss');
   setProteinTracking(settings.trackProtein || false);
@@ -1294,11 +1593,13 @@ function saveSettings() {
   const goal         = parseInt(document.getElementById('goalInput').value);
   const weight       = parseFloat(document.getElementById('weightInput').value);
   const proteinGoal  = parseInt(document.getElementById('proteinGoalInput').value);
+  const goalWeight   = parseFloat(document.getElementById('goalWeightInput').value);
 
   if (goal && goal > 0) settings.goal = goal;
   allDays[tk].goal = settings.goal || 0;
 
   if (proteinGoal && proteinGoal > 0) settings.proteinGoal = proteinGoal;
+  if (goalWeight && goalWeight > 0)   settings.goalWeight  = goalWeight;
 
   if (weight && weight > 0) {
     if (!settings.startWeight) settings.startWeight = weight;
@@ -1397,6 +1698,289 @@ function dismissRecalc() {
   settings.settingsDate = new Date().toISOString();
   settings.startWeight  = settings.currentWeight;
   ss('fuel_settings', settings);
+}
+
+// ============================
+// PROGRESS MODAL
+// ============================
+function openProgress() {
+  renderProgressModal();
+  document.getElementById('progressModal').classList.add('open');
+}
+function closeProgress() {
+  document.getElementById('progressModal').classList.remove('open');
+}
+
+function renderProgressModal() {
+  const isGain      = settings.goalType === 'gain';
+  const startW      = settings.startWeight;
+  const currentW    = settings.currentWeight;
+  const goalW       = settings.goalWeight;
+  const logs        = weightLog.slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+  const hasData     = startW > 0 && currentW > 0;
+  const hasGoal     = goalW > 0;
+
+  // ---- SHOW/HIDE sections ----
+  document.getElementById('progressNoData').style.display     = hasData ? 'none' : 'block';
+  document.getElementById('progressGoalSection').style.display = (hasData && hasGoal) ? 'block' : 'none';
+  document.getElementById('progressStatsRow').style.display    = hasData && logs.length > 1 ? 'grid' : 'none';
+  document.getElementById('progressSuggestions').style.display = hasData ? 'block' : 'none';
+
+  if (!hasData) return;
+
+  // ---- GOAL PROGRESS BAR ----
+  if (hasGoal) {
+    const totalNeeded = Math.abs(goalW - startW);
+    const achieved    = isGain
+      ? Math.max(0, currentW - startW)
+      : Math.max(0, startW - currentW);
+    const pct = totalNeeded > 0 ? Math.min(achieved / totalNeeded * 100, 100) : 0;
+    const remaining = Math.abs(goalW - currentW);
+
+    document.getElementById('progressGoalBar').style.width   = pct.toFixed(1) + '%';
+    document.getElementById('progressGoalPct').textContent   = pct.toFixed(0) + '% there';
+    document.getElementById('progressStartLbl').textContent   = startW + ' lbs';
+    document.getElementById('progressCurrentLbl').textContent = currentW + ' lbs';
+    document.getElementById('progressGoalLbl').textContent    = goalW + ' lbs';
+
+    // ETA estimate — 1 lb/week loss or gain pace
+    const avgWeeklyChange = calcAvgWeeklyChange(logs);
+    const etaBox = document.getElementById('progressEtaBox');
+    if (remaining < 0.5) {
+      etaBox.innerHTML = `🎉 <strong>You've reached your goal weight!</strong> Amazing work — update your goal to keep progressing.`;
+    } else if (Math.abs(avgWeeklyChange) >= 0.1) {
+      const weeksLeft = remaining / Math.abs(avgWeeklyChange);
+      const etaDate   = new Date();
+      etaDate.setDate(etaDate.getDate() + Math.round(weeksLeft * 7));
+      const etaStr    = etaDate.toLocaleDateString(undefined, { month:'long', day:'numeric', year:'numeric' });
+      etaBox.innerHTML = `📅 At your current pace of <strong>${Math.abs(avgWeeklyChange).toFixed(1)} lbs/week</strong>, you'll reach your goal around <strong>${etaStr}</strong> — about <strong>${Math.round(weeksLeft)} weeks</strong> away.`;
+    } else {
+      etaBox.innerHTML = `📊 Keep logging your weight weekly — we'll estimate your goal date once we have more data.`;
+    }
+  }
+
+  // ---- WEIGHT CHART ----
+  drawWeightChart(logs, goalW, isGain);
+
+  // ---- STATS ROW ----
+  if (logs.length > 1) {
+    const first     = logs[0].weight;
+    const last      = logs[logs.length - 1].weight;
+    const change    = last - first;
+    const msElapsed = new Date(logs[logs.length-1].date) - new Date(logs[0].date);
+    const weeksElapsed = msElapsed / (1000*60*60*24*7);
+    const avgWeekly = weeksElapsed > 0 ? Math.abs(change / weeksElapsed) : 0;
+
+    const dir = change >= 0 ? '+' : '';
+    document.getElementById('statChange').textContent     = dir + change.toFixed(1) + ' lbs';
+    document.getElementById('statChange').style.color     = isGain ? (change > 0 ? 'var(--good)' : 'var(--danger)') : (change < 0 ? 'var(--good)' : 'var(--danger)');
+    document.getElementById('statChangeLbl').textContent  = isGain ? 'Gained' : 'Lost';
+    document.getElementById('statWeeks').textContent      = Math.round(weeksElapsed) || '< 1';
+    document.getElementById('statAvgWeekly').textContent  = avgWeekly.toFixed(1) + ' lbs';
+  }
+
+  // ---- SUGGESTIONS ----
+  renderSuggestions(isGain, currentW, goalW, startW, logs);
+}
+
+function calcAvgWeeklyChange(logs) {
+  if (logs.length < 2) return 0;
+  const first = logs[0]; const last = logs[logs.length-1];
+  const weeks = (new Date(last.date) - new Date(first.date)) / (1000*60*60*24*7);
+  return weeks > 0 ? (last.weight - first.weight) / weeks : 0;
+}
+
+function drawWeightChart(logs, goalW, isGain) {
+  const canvas = document.getElementById('weightChart');
+  const empty  = document.getElementById('weightChartEmpty');
+  const ctx    = canvas.getContext('2d');
+
+  if (logs.length < 2) {
+    canvas.style.display = 'none';
+    empty.style.display = 'flex';
+    return;
+  }
+  canvas.style.display = 'block';
+  empty.style.display  = 'none';
+
+  // Size canvas to device pixel ratio
+  const wrap  = document.getElementById('weightChartWrap');
+  const dpr   = window.devicePixelRatio || 1;
+  const W     = wrap.clientWidth;
+  const H     = 160;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  const weights = logs.map(l => l.weight);
+  const allVals = goalW > 0 ? [...weights, goalW] : weights;
+  const minW    = Math.min(...allVals) - 3;
+  const maxW    = Math.max(...allVals) + 3;
+  const pad     = { top: 16, right: 20, bottom: 28, left: 36 };
+  const cW      = W - pad.left - pad.right;
+  const cH      = H - pad.top  - pad.bottom;
+
+  const xScale = i  => pad.left + (i / (logs.length - 1)) * cW;
+  const yScale = v  => pad.top  + (1 - (v - minW) / (maxW - minW)) * cH;
+
+  // CSS variable colours — read from :root
+  const style    = getComputedStyle(document.documentElement);
+  const accent   = style.getPropertyValue('--accent').trim()   || '#e8c547';
+  const good     = style.getPropertyValue('--good').trim()     || '#5ab88a';
+  const muted    = style.getPropertyValue('--muted').trim()    || '#7a7672';
+  const surface2 = style.getPropertyValue('--surface2').trim() || '#232220';
+  const text     = style.getPropertyValue('--text').trim()     || '#f0ede8';
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Gridlines
+  ctx.strokeStyle = surface2; ctx.lineWidth = 1;
+  for (let i = 0; i <= 3; i++) {
+    const y = pad.top + (cH / 3) * i;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cW, y); ctx.stroke();
+    const val = maxW - ((maxW - minW) / 3) * i;
+    ctx.fillStyle = muted; ctx.font = `10px sans-serif`; ctx.textAlign = 'right';
+    ctx.fillText(val.toFixed(0), pad.left - 4, y + 3);
+  }
+
+  // Goal weight dashed line
+  if (goalW > 0 && goalW >= minW && goalW <= maxW) {
+    const gy = yScale(goalW);
+    ctx.strokeStyle = good; ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(pad.left, gy); ctx.lineTo(pad.left + cW, gy); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = good; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('Goal', pad.left + 4, gy - 3);
+  }
+
+  // Area fill under line
+  const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + cH);
+  grad.addColorStop(0, accent + '55');
+  grad.addColorStop(1, accent + '05');
+  ctx.beginPath();
+  ctx.moveTo(xScale(0), yScale(weights[0]));
+  weights.forEach((w, i) => { if (i > 0) ctx.lineTo(xScale(i), yScale(w)); });
+  ctx.lineTo(xScale(weights.length-1), pad.top + cH);
+  ctx.lineTo(xScale(0), pad.top + cH);
+  ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+
+  // Main line
+  ctx.beginPath();
+  ctx.strokeStyle = accent; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+  weights.forEach((w, i) => {
+    i === 0 ? ctx.moveTo(xScale(i), yScale(w)) : ctx.lineTo(xScale(i), yScale(w));
+  });
+  ctx.stroke();
+
+  // Dots + labels
+  weights.forEach((w, i) => {
+    const x = xScale(i); const y = yScale(w);
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = accent; ctx.fill();
+    ctx.strokeStyle = surface2; ctx.lineWidth = 1.5; ctx.stroke();
+  });
+
+  // X-axis date labels (first, middle, last)
+  const labelIdxs = [0, Math.floor((logs.length-1)/2), logs.length-1].filter((v,i,a) => a.indexOf(v) === i);
+  ctx.fillStyle = muted; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+  labelIdxs.forEach(i => {
+    const d = new Date(logs[i].date);
+    const lbl = `${d.getMonth()+1}/${d.getDate()}`;
+    ctx.fillText(lbl, xScale(i), H - 6);
+  });
+}
+
+function renderSuggestions(isGain, currentW, goalW, startW, logs) {
+  const list    = document.getElementById('suggestionsList');
+  list.innerHTML = '';
+  const avgWeekly  = calcAvgWeeklyChange(logs);
+  const goal       = settings.goal || 0;
+  const remaining  = goalW > 0 ? Math.abs(goalW - currentW) : null;
+  const tips       = [];
+
+  if (isGain) {
+    // ---- GAIN TIPS ----
+    if (avgWeekly < 0.25 && logs.length >= 2) tips.push({
+      icon: '📈', hl: true,
+      title: 'You may need a bigger surplus',
+      text: `You're gaining less than 0.25 lbs/week. Try adding 150–200 more calories per day — focus on protein-rich foods to maximize muscle over fat.`
+    });
+    if (avgWeekly > 1 && logs.length >= 2) tips.push({
+      icon: '⚠️', hl: false,
+      title: 'Gaining faster than ideal',
+      text: `Above ~0.5–1 lbs/week may mean more fat gain than muscle. Consider reducing your surplus by 200 cal and increasing resistance training.`
+    });
+    if (goal > 0) tips.push({
+      icon: '🍗', hl: false,
+      title: 'Prioritize protein',
+      text: `For muscle gain, aim for 0.8–1g of protein per lb of bodyweight (${Math.round((currentW || 150) * 0.9)}g/day). Distribute it across every meal.`
+    });
+    tips.push({
+      icon: '🏋️', hl: false,
+      title: 'Resistance training is key',
+      text: 'A calorie surplus without strength training leads to fat gain. Lift 3–4x per week and progressively overload each session.'
+    });
+    if (remaining !== null && remaining > 0) tips.push({
+      icon: '📅', hl: false,
+      title: 'Pace yourself',
+      text: `You have ${remaining.toFixed(1)} lbs to go. At a healthy pace of 0.5 lbs/week that's about ${Math.ceil(remaining / 0.5)} weeks — stay consistent over rushing.`
+    });
+  } else {
+    // ---- LOSS TIPS ----
+    if (avgWeekly < 0.25 && logs.length >= 2 && (startW - currentW) < 1) tips.push({
+      icon: '🔥', hl: true,
+      title: "Scale isn't moving much yet",
+      text: `Less than 0.25 lbs/week progress. Try reducing daily intake by 150–200 calories or adding a 20-minute walk daily to increase your deficit.`
+    });
+    if (Math.abs(avgWeekly) > 2 && logs.length >= 2) tips.push({
+      icon: '⚠️', hl: false,
+      title: 'Losing weight very fast',
+      text: `Losing more than 2 lbs/week can cause muscle loss and fatigue. Aim for 0.5–1.5 lbs/week for sustainable fat loss.`
+    });
+    if (goal > 0) tips.push({
+      icon: '🥗', hl: false,
+      title: 'Protect your muscle',
+      text: `During a deficit, eat at least 0.7g of protein per lb of bodyweight (${Math.round((currentW || 150) * 0.7)}g/day) to preserve lean muscle.`
+    });
+    tips.push({
+      icon: '💧', hl: false,
+      title: 'Hydration affects the scale',
+      text: 'Daily weight fluctuations of 1–3 lbs are normal from water, sodium, and digestion. Judge progress week-to-week, not day-to-day.'
+    });
+    if (remaining !== null && remaining > 0) tips.push({
+      icon: '🎯', hl: false,
+      title: `${remaining.toFixed(1)} lbs to go`,
+      text: `At a healthy pace of 1 lb/week, you're looking at about ${Math.ceil(remaining)} weeks. Consistency beats intensity — small daily habits compound.`
+    });
+    tips.push({
+      icon: '😴', hl: false,
+      title: 'Sleep impacts fat loss',
+      text: 'Poor sleep raises cortisol and hunger hormones, making it harder to stay in a deficit. Aim for 7–9 hours to support your goal.'
+    });
+  }
+
+  // Always show at least 3 tips
+  if (tips.length === 0) tips.push({
+    icon: '📊', hl: false,
+    title: 'Keep logging to unlock insights',
+    text: 'Log your weight weekly and track your meals consistently — the more data you build up, the more personalized your tips will be.'
+  });
+
+  tips.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'suggestion-card' + (t.hl ? ' highlight' : '');
+    card.innerHTML = `
+      <div class="suggestion-icon">${t.icon}</div>
+      <div class="suggestion-body">
+        <div class="suggestion-title">${t.title}</div>
+        <div class="suggestion-text">${t.text}</div>
+      </div>`;
+    list.appendChild(card);
+  });
 }
 
 // ============================
