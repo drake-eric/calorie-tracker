@@ -379,12 +379,13 @@ body {
 .entry-tag.Snack     { background: var(--tag-snack-bg);     color: var(--tag-snack-fg); }
 .entry-tag.Drink     { background: var(--tag-drink-bg);     color: var(--tag-drink-fg); }
 .entry-cals { font-family: var(--font-display); font-size: 20px; color: var(--accent); flex-shrink: 0; }
-.entry-delete {
-  background: none; border: none; color: var(--muted);
-  cursor: pointer; font-size: 16px; padding: 4px; border-radius: 6px;
-  transition: color 0.2s; flex-shrink: 0;
+.entry-edit {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+  cursor: pointer; font-size: 13px; padding: 6px 10px; border-radius: 8px;
+  transition: all 0.2s; flex-shrink: 0; font-family: var(--font-body); font-weight: 600;
+  letter-spacing: 0.04em;
 }
-.entry-delete:hover { color: var(--danger); }
+.entry-edit:hover { background: var(--border); color: var(--text); }
 .empty-state { text-align: center; padding: 40px 24px; color: var(--muted); }
 .empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
 .empty-state p { font-size: 14px; line-height: 1.6; }
@@ -728,7 +729,56 @@ select.form-input {
 </div>
 
 
-<!-- =================== SETTINGS MODAL =================== -->
+<!-- =================== EDIT ENTRY MODAL =================== -->
+<div class="modal-backdrop" id="editModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <div class="modal-title" style="margin-bottom:0;">Edit Entry</div>
+      <button onclick="closeEditModal()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;line-height:1;transition:color 0.2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'" title="Close">✕</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Food / Meal Name</label>
+      <input type="text" id="editFoodName" class="form-input" placeholder="e.g. Chicken salad…">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Calories</label>
+      <input type="number" id="editFoodCals" class="form-input" placeholder="350" min="0">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Meal Type</label>
+      <select id="editMealType" class="form-input">
+        <option value="Breakfast">🌅 Breakfast</option>
+        <option value="Lunch">☀️ Lunch</option>
+        <option value="Dinner">🌙 Dinner</option>
+        <option value="Snack">🍎 Snack</option>
+        <option value="Drink">🥤 Drink</option>
+      </select>
+    </div>
+    <div class="form-group" id="editProteinGroup" style="display:none;">
+      <label class="form-label">Protein (g) <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">optional</span></label>
+      <input type="number" id="editFoodProtein" class="form-input" placeholder="e.g. 30" min="0" max="500">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Photo</label>
+      <div class="photo-upload" id="editPhotoUploadBox">
+        <input type="file" accept="image/*" id="editPhotoInput" onchange="handleEditPhoto(event)">
+        <div id="editPhotoPlaceholder">
+          <div class="photo-upload-icon">📷</div>
+          <div class="photo-upload-text">Tap to add or change photo</div>
+        </div>
+        <img id="editPhotoPreview" class="photo-preview hidden" alt="">
+      </div>
+      <button id="editRemovePhotoBtn" onclick="removeEditPhoto()" class="hidden" style="margin-top:8px;background:none;border:none;color:var(--danger);font-family:var(--font-body);font-size:13px;cursor:pointer;padding:0;">✕ Remove photo</button>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="confirmDeleteEntry()" style="flex:1; color:var(--danger); border-color:var(--danger);">Delete</button>
+      <button class="btn-save" onclick="saveEditEntry()">Save Changes</button>
+    </div>
+  </div>
+</div>
 <div class="modal-backdrop" id="settingsModal">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -1046,7 +1096,7 @@ function renderEntries() {
         </div>
       </div>
       <div class="entry-cals">${e.cals}</div>
-      <button class="entry-delete" onclick="deleteEntry(${i})" title="Remove">✕</button>
+      <button class="entry-edit" onclick="openEditModal(${i})" title="Edit">Edit</button>
     `;
     list.appendChild(card);
   });
@@ -1054,6 +1104,96 @@ function renderEntries() {
 
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function deleteEntry(i) { allDays[tk].entries.splice(i,1); ss('fuel_days',allDays); renderAll(); }
+
+// ============================
+// EDIT ENTRY MODAL
+// ============================
+let editingIndex = -1;
+let editPhotoDataUrl = null;
+
+function openEditModal(i) {
+  const e = allDays[tk].entries[i];
+  editingIndex = i;
+  editPhotoDataUrl = e.photo || null;
+
+  document.getElementById('editFoodName').value    = e.name || '';
+  document.getElementById('editFoodCals').value    = e.cals || '';
+  document.getElementById('editMealType').value    = e.mealType || 'Lunch';
+  document.getElementById('editFoodProtein').value = e.protein || '';
+
+  // Protein field visibility
+  const trackProtein = settings.trackProtein && settings.proteinGoal > 0;
+  document.getElementById('editProteinGroup').style.display = trackProtein ? 'block' : 'none';
+
+  // Photo
+  if (e.photo) {
+    document.getElementById('editPhotoPreview').src = e.photo;
+    document.getElementById('editPhotoPreview').classList.remove('hidden');
+    document.getElementById('editPhotoPlaceholder').classList.add('hidden');
+    document.getElementById('editRemovePhotoBtn').classList.remove('hidden');
+  } else {
+    document.getElementById('editPhotoPreview').classList.add('hidden');
+    document.getElementById('editPhotoPlaceholder').classList.remove('hidden');
+    document.getElementById('editRemovePhotoBtn').classList.add('hidden');
+  }
+
+  document.getElementById('editModal').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('open');
+  editingIndex = -1;
+  editPhotoDataUrl = null;
+}
+
+function handleEditPhoto(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    editPhotoDataUrl = ev.target.result;
+    document.getElementById('editPhotoPreview').src = editPhotoDataUrl;
+    document.getElementById('editPhotoPreview').classList.remove('hidden');
+    document.getElementById('editPhotoPlaceholder').classList.add('hidden');
+    document.getElementById('editRemovePhotoBtn').classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeEditPhoto() {
+  editPhotoDataUrl = null;
+  document.getElementById('editPhotoPreview').classList.add('hidden');
+  document.getElementById('editPhotoPlaceholder').classList.remove('hidden');
+  document.getElementById('editRemovePhotoBtn').classList.add('hidden');
+  document.getElementById('editPhotoInput').value = '';
+}
+
+function saveEditEntry() {
+  const name     = document.getElementById('editFoodName').value.trim();
+  const cals     = parseInt(document.getElementById('editFoodCals').value);
+  const mealType = document.getElementById('editMealType').value;
+  const protein  = parseInt(document.getElementById('editFoodProtein').value) || 0;
+
+  if (!name)           { alert('Please enter a food name.'); return; }
+  if (!cals || cals<0) { alert('Please enter valid calories.'); return; }
+
+  const entry = allDays[tk].entries[editingIndex];
+  entry.name     = name;
+  entry.cals     = cals;
+  entry.mealType = mealType;
+  entry.protein  = protein;
+  entry.photo    = editPhotoDataUrl;
+
+  ss('fuel_days', allDays);
+  closeEditModal();
+  renderAll();
+}
+
+function confirmDeleteEntry() {
+  if (confirm('Remove this entry?')) {
+    deleteEntry(editingIndex);
+    closeEditModal();
+  }
+}
 
 // ============================
 // NOTES
