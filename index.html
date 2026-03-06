@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Fuel — Calorie Tracker</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f0e0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fuel">
+<link rel="apple-touch-icon" href="icon-192.png">
+
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@400;600&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 
@@ -632,6 +641,61 @@ select.form-input {
 }
 .protein-fill.over { background: var(--accent); }
 
+/* ---- WATER TRACKING ---- */
+.water-section {
+  padding: 0 24px 4px;
+  display: none;
+}
+.water-section.visible { display: block; }
+.water-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+.water-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 600; }
+.water-nums { font-size: 13px; font-weight: 600; }
+.water-nums span { color: #5ab0d8; }
+.water-track {
+  height: 10px; background: var(--surface2); border-radius: 20px; overflow: hidden; margin-bottom: 10px;
+}
+.water-fill {
+  height: 100%; background: #5ab0d8; border-radius: 20px;
+  transition: width 0.5s cubic-bezier(.4,0,.2,1);
+  min-width: 0; max-width: 100%;
+}
+.water-fill.done { background: var(--good); }
+.water-quick {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.water-quick-btn {
+  flex: 1; min-width: 0;
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  border-radius: 10px; padding: 8px 4px; font-size: 13px; font-weight: 600;
+  font-family: var(--font-body); cursor: pointer; text-align: center;
+  transition: all 0.15s; white-space: nowrap;
+}
+.water-quick-btn:hover { border-color: #5ab0d8; color: #5ab0d8; }
+.water-quick-btn:active { transform: scale(0.96); }
+
+/* ---- WATER LOG ---- */
+.water-log-section { padding: 0 16px; margin-top: 20px; display: none; }
+.water-log-section.visible { display: block; }
+.water-log-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.water-log-item {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 11px 14px; display: flex; align-items: center; gap: 12px;
+  animation: slideIn 0.2s ease;
+}
+.water-log-icon { font-size: 20px; flex-shrink: 0; }
+.water-log-info { flex: 1; }
+.water-log-amount { font-weight: 700; font-size: 15px; font-family: var(--font-display); color: #5ab0d8; }
+.water-log-time { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.water-log-delete {
+  background: none; border: none; color: var(--muted); font-size: 16px;
+  cursor: pointer; padding: 4px; border-radius: 6px; transition: color 0.2s;
+}
+.water-log-delete:hover { color: var(--danger); }
+.water-empty { text-align: center; padding: 24px; color: var(--muted); font-size: 13px; }
+
 /* ---- GOAL TOGGLE ---- */
 .goal-toggle { display: flex; gap: 10px; }
 .goal-toggle-btn {
@@ -718,6 +782,24 @@ select.form-input {
   </div>
 </div>
 
+<!-- WATER BAR -->
+<div class="water-section" id="waterSection">
+  <div class="water-header">
+    <span class="water-label">💧 Water</span>
+    <span class="water-nums"><span id="waterConsumed">0</span> / <span id="waterGoalDisplay">—</span> oz</span>
+  </div>
+  <div class="water-track">
+    <div class="water-fill" id="waterFill" style="width:0%"></div>
+  </div>
+  <div class="water-quick">
+    <button class="water-quick-btn" onclick="logWater(8)">+8 oz</button>
+    <button class="water-quick-btn" onclick="logWater(12)">+12 oz</button>
+    <button class="water-quick-btn" onclick="logWater(16)">+16 oz</button>
+    <button class="water-quick-btn" onclick="logWater(20)">+20 oz</button>
+    <button class="water-quick-btn" onclick="openWaterModal()">Custom</button>
+  </div>
+</div>
+
 <!-- WEEK CHART -->
 <div class="week-section">
   <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -739,6 +821,19 @@ select.form-input {
       <div class="empty-icon">🍽️</div>
       <p>No meals logged yet.<br>Tap "Add Fuel" to get started.</p>
     </div>
+  </div>
+</div>
+
+<!-- WATER LOG -->
+<div class="water-log-section" id="waterLogSection">
+  <div class="section-header" style="padding: 4px 8px 12px;">
+    <span class="section-title">💧 Water Log</span>
+    <button class="add-btn" style="background:var(--tag-drink-bg);color:var(--tag-drink-fg);border:1px solid var(--tag-drink-fg)40;" onclick="openWaterModal()">
+      <span style="font-size:16px;">+</span> Add
+    </button>
+  </div>
+  <div class="water-log-list" id="waterLogList">
+    <div class="water-empty" id="waterEmptyState">No water logged yet today.</div>
   </div>
 </div>
 
@@ -950,6 +1045,29 @@ select.form-input {
     </div>
   </div>
 </div>
+<!-- =================== WATER MODAL =================== -->
+<div class="modal-backdrop" id="waterModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Log Water 💧</div>
+    <div class="form-group">
+      <label class="form-label">Amount (oz)</label>
+      <input type="number" id="waterAmountInput" class="form-input" placeholder="e.g. 16" min="1" max="200">
+    </div>
+    <div style="display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap;">
+      <button class="water-quick-btn" onclick="document.getElementById('waterAmountInput').value=8" style="flex:none;padding:8px 14px;">8 oz</button>
+      <button class="water-quick-btn" onclick="document.getElementById('waterAmountInput').value=12" style="flex:none;padding:8px 14px;">12 oz</button>
+      <button class="water-quick-btn" onclick="document.getElementById('waterAmountInput').value=16" style="flex:none;padding:8px 14px;">16 oz</button>
+      <button class="water-quick-btn" onclick="document.getElementById('waterAmountInput').value=20" style="flex:none;padding:8px 14px;">20 oz</button>
+      <button class="water-quick-btn" onclick="document.getElementById('waterAmountInput').value=32" style="flex:none;padding:8px 14px;">32 oz</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeWaterModal()">Cancel</button>
+      <button class="btn-save" onclick="saveWaterEntry()">Log It</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="settingsModal">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -1016,6 +1134,28 @@ select.form-input {
       <input type="number" id="proteinGoalInput" class="form-input" placeholder="e.g. 150" min="10" max="500">
       <div style="font-size:12px; color:var(--muted); margin-top:8px;">
         A common target is 0.7–1g per lb of bodyweight.
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Track Water?</label>
+      <div class="goal-toggle">
+        <button class="goal-toggle-btn" id="btnWaterYes" onclick="setWaterTracking(true)">
+          <span class="toggle-icon">💧</span>
+          Yes, track it
+        </button>
+        <button class="goal-toggle-btn" id="btnWaterNo" onclick="setWaterTracking(false)">
+          <span class="toggle-icon">✖️</span>
+          No thanks
+        </button>
+      </div>
+    </div>
+
+    <div class="form-group" id="waterGoalGroup" style="display:none;">
+      <label class="form-label">Daily Water Goal (oz)</label>
+      <input type="number" id="waterGoalInput" class="form-input" placeholder="e.g. 64" min="8" max="300">
+      <div style="font-size:12px; color:var(--muted); margin-top:8px;">
+        The general recommendation is 64 oz (8 cups) per day — more if you're active.
       </div>
     </div>
 
@@ -1090,7 +1230,7 @@ function ss(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
 // ============================
 // STATE
 // ============================
-let settings         = gs('fuel_settings', { goal: 0, startWeight: 0, currentWeight: 0, settingsDate: null, goalType: 'loss', trackProtein: false, proteinGoal: 0, goalWeight: 0 });
+let settings         = gs('fuel_settings', { goal: 0, startWeight: 0, currentWeight: 0, settingsDate: null, goalType: 'loss', trackProtein: false, proteinGoal: 0, goalWeight: 0, trackWater: false, waterGoal: 64 });
 let allDays          = gs('fuel_days', {});
 let weightLog        = gs('fuel_weights', []);
 let lastWeightPrompt = gs('fuel_last_weight_prompt', null);
@@ -1103,10 +1243,11 @@ const MONTHS     = ['January','February','March','April','May','June','July','Au
 
 function todayKey() { const d = new Date(); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
 const tk = todayKey();
-if (!allDays[tk]) { allDays[tk] = { entries: [], goal: settings.goal || 0, note: '' }; ss('fuel_days', allDays); }
+if (!allDays[tk]) { allDays[tk] = { entries: [], waterEntries: [], goal: settings.goal || 0, note: '' }; ss('fuel_days', allDays); }
 // Always sync today's goal from settings (in case it was set on a previous day)
 if (settings.goal && !allDays[tk].goal) { allDays[tk].goal = settings.goal; ss('fuel_days', allDays); }
 if (!allDays[tk].note) allDays[tk].note = '';
+if (!allDays[tk].waterEntries) allDays[tk].waterEntries = [];
 
 // ============================
 // THEME
@@ -1572,6 +1713,91 @@ function setProteinTracking(val) {
 }
 
 // ============================
+// WATER TRACKING
+// ============================
+function setWaterTracking(val) {
+  settings.trackWater = val;
+  document.getElementById('btnWaterYes').classList.toggle('active', val);
+  document.getElementById('btnWaterNo').classList.toggle('active', !val);
+  document.getElementById('waterGoalGroup').style.display = val ? 'block' : 'none';
+}
+
+function renderWater() {
+  const track = settings.trackWater && settings.waterGoal > 0;
+  document.getElementById('waterSection').classList.toggle('visible', track);
+  document.getElementById('waterLogSection').classList.toggle('visible', track);
+  if (!track) return;
+
+  const entries  = allDays[tk].waterEntries || [];
+  const consumed = entries.reduce((s, e) => s + e.oz, 0);
+  const goal     = settings.waterGoal;
+  const pct      = goal > 0 ? Math.min(consumed / goal * 100, 100) : 0;
+
+  document.getElementById('waterConsumed').textContent  = consumed;
+  document.getElementById('waterGoalDisplay').textContent = goal;
+  const fill = document.getElementById('waterFill');
+  fill.style.width = pct + '%';
+  fill.classList.toggle('done', consumed >= goal);
+
+  renderWaterLog(entries);
+}
+
+function renderWaterLog(entries) {
+  const list  = document.getElementById('waterLogList');
+  const empty = document.getElementById('waterEmptyState');
+  list.querySelectorAll('.water-log-item').forEach(el => el.remove());
+
+  if (!entries || entries.length === 0) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  // Show newest first
+  [...entries].reverse().forEach((e, ri) => {
+    const i = entries.length - 1 - ri; // real index
+    const item = document.createElement('div');
+    item.className = 'water-log-item';
+    item.innerHTML = `
+      <div class="water-log-icon">💧</div>
+      <div class="water-log-info">
+        <div class="water-log-amount">${e.oz} oz</div>
+        <div class="water-log-time">${e.time}</div>
+      </div>
+      <button class="water-log-delete" onclick="deleteWaterEntry(${i})" title="Remove">✕</button>`;
+    list.appendChild(item);
+  });
+}
+
+function logWater(oz) {
+  if (!allDays[tk].waterEntries) allDays[tk].waterEntries = [];
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  allDays[tk].waterEntries.push({ oz, time });
+  ss('fuel_days', allDays);
+  renderWater();
+}
+
+function deleteWaterEntry(i) {
+  allDays[tk].waterEntries.splice(i, 1);
+  ss('fuel_days', allDays);
+  renderWater();
+}
+
+function openWaterModal() {
+  document.getElementById('waterAmountInput').value = '';
+  document.getElementById('waterModal').classList.add('open');
+}
+function closeWaterModal() {
+  document.getElementById('waterModal').classList.remove('open');
+}
+function saveWaterEntry() {
+  const oz = parseInt(document.getElementById('waterAmountInput').value);
+  if (!oz || oz <= 0) { alert('Please enter a valid amount.'); return; }
+  logWater(oz);
+  closeWaterModal();
+}
+
+// ============================
 // SETTINGS MODAL
 // ============================
 function openSettings() {
@@ -1579,8 +1805,10 @@ function openSettings() {
   document.getElementById('weightInput').value      = settings.currentWeight || '';
   document.getElementById('goalWeightInput').value  = settings.goalWeight || '';
   document.getElementById('proteinGoalInput').value = settings.proteinGoal || '';
+  document.getElementById('waterGoalInput').value   = settings.waterGoal || 64;
   setGoalType(settings.goalType || 'loss');
   setProteinTracking(settings.trackProtein || false);
+  setWaterTracking(settings.trackWater || false);
   // refresh active swatches
   document.querySelectorAll('.theme-swatch').forEach(s => {
     s.classList.toggle('active', s.dataset.themeId === currentTheme);
@@ -1600,6 +1828,9 @@ function saveSettings() {
 
   if (proteinGoal && proteinGoal > 0) settings.proteinGoal = proteinGoal;
   if (goalWeight && goalWeight > 0)   settings.goalWeight  = goalWeight;
+
+  const waterGoal = parseInt(document.getElementById('waterGoalInput').value);
+  if (waterGoal && waterGoal > 0) settings.waterGoal = waterGoal;
 
   if (weight && weight > 0) {
     if (!settings.startWeight) settings.startWeight = weight;
@@ -1997,6 +2228,7 @@ function renderAll() {
   renderHeader();
   renderRing();
   renderProtein();
+  renderWater();
   renderWeekChart();
   renderEntries();
   renderNote();
@@ -2007,7 +2239,19 @@ buildThemeSwatches();
 applyTheme(currentTheme);
 setGoalType(settings.goalType || 'loss');
 setProteinTracking(settings.trackProtein || false);
+setWaterTracking(settings.trackWater || false);
 renderAll();
+
+// ============================
+// PWA: SERVICE WORKER + STORAGE
+// ============================
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+// Ask browser to persist storage so OS won't clear it
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist();
+}
 </script>
 </body>
 </html>
